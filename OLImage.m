@@ -152,7 +152,7 @@ inline static BOOL CGImageSourceGetFramesAndDurations(NSTimeInterval *finalDurat
     if (imageSource) {
         NSTimeInterval *aFinalDuration = NULL;
         NSUInteger numberOfFrames = CGImageSourceGetCount(imageSource);
-        
+        self.frameDurations = (NSTimeInterval *) malloc(numberOfFrames  * sizeof(NSTimeInterval));
         self.images = [NSMutableArray arrayWithCapacity:numberOfFrames];
         CGImageSourceGetFramesAndDurations(aFinalDuration, self.frameDurations, self.images, imageSource);
         if (aFinalDuration) {
