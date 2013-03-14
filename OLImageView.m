@@ -52,7 +52,8 @@
     }
 }
 
--(BOOL)isAnimating {
+-(BOOL)isAnimating
+{
     return (self.keyFrameTimer != nil);
 }
 
@@ -62,56 +63,58 @@
         [super stopAnimating];
         return;
     }
-    
-    if (self.keyFrameTimer) {
-        [self.keyFrameTimer invalidate];
-        self.keyFrameTimer = nil;
-    }
 }
 
 -(void)startAnimating
-{    
+{
     if (!self.animatedImage) {
         [super startAnimating];
         return;
-    }
-    if (!self.keyFrameTimer) {
-        self.keyFrameTimer = [NSTimer scheduledTimerWithTimeInterval:0.005 target:self selector:@selector(changeKeyframe) userInfo:nil repeats:YES];
     }
 }
 
 - (void)changeKeyframe
 {
-    self.currentKeyframeElapsedTime += self.keyFrameTimer.timeInterval;
-    if (self.currentKeyframeElapsedTime >= self.animatedImage.frameDurations[self.currentFrameIndex]) {
-        NSUInteger newIndex = self.currentFrameIndex + 1;
-        if (newIndex >= [self.animatedImage.images count]) {
-            self.loopCountdown--;
-            if (self.loopCountdown == 0) {
-                [self stopAnimating];
-                return;
+    if (self.animatedImage) {
+        self.currentKeyframeElapsedTime += self.keyFrameTimer.timeInterval;
+        if (self.currentKeyframeElapsedTime >= self.animatedImage.frameDurations[self.currentFrameIndex]) {
+            NSUInteger newIndex = self.currentFrameIndex + 1;
+            if (newIndex >= [self.animatedImage.images count]) {
+                self.loopCountdown--;
+                if (self.loopCountdown == 0) {
+                    [self stopAnimating];
+                    return;
+                }
+                newIndex = 0;
             }
-            newIndex = 0;
+            self.currentFrameIndex = newIndex;
+            self.currentKeyframeElapsedTime = 0.0f;
+            [self.layer setNeedsDisplay];
         }
-        self.currentFrameIndex = newIndex;
-        self.currentKeyframeElapsedTime = 0.0f;
-        [self.layer setNeedsDisplay];
     }
 }
 
-- (void)displayLayer:(CALayer *)layer {
+- (void)displayLayer:(CALayer *)layer
+{
     layer.contents = (__bridge id)([(UIImage *)[self.animatedImage.images objectAtIndex:self.currentFrameIndex] CGImage]);
 }
 
-- (void)didMoveToSuperview {
-    if (!self.superview) {
-        [self stopAnimating];
+- (void)didMoveToWindow
+{
+    if (self.window) {
+        if (!self.keyFrameTimer) {
+            self.keyFrameTimer = [NSTimer scheduledTimerWithTimeInterval:0.005 target:self selector:@selector(changeKeyframe) userInfo:nil repeats:YES];
+        }
     } else {
-        [self startAnimating];
+        if (self.keyFrameTimer) {
+            [self.keyFrameTimer invalidate];
+            self.keyFrameTimer = nil;
+        }
     }
 }
 
-- (UIImage *)image {
+- (UIImage *)image
+{
     if (self.animatedImage != nil) {
         return self.animatedImage;
     }
