@@ -108,13 +108,22 @@
 {
     if (self.window) {
         if (!self.keyFrameTimer) {
-            self.keyFrameTimer = [NSTimer scheduledTimerWithTimeInterval:0.005 target:self selector:@selector(changeKeyframe) userInfo:nil repeats:YES];
+            self.keyFrameTimer = [NSTimer timerWithTimeInterval:0.005 target:self selector:@selector(changeKeyframe) userInfo:nil repeats:YES];
+            
+            [[NSRunLoop currentRunLoop] addTimer:self.keyFrameTimer forMode:NSRunLoopCommonModes];
         }
     } else {
         if (self.keyFrameTimer) {
             [self.keyFrameTimer invalidate];
             self.keyFrameTimer = nil;
         }
+    }
+}
+
+- (void)setHighlighted:(BOOL)highlighted
+{
+    if (!self.animatedImage) {
+        [super setHighlighted:highlighted];
     }
 }
 
