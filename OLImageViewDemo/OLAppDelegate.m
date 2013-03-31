@@ -10,7 +10,7 @@
 #import "OLImageView.h"
 #import "OLImage.h"
 
-#define OLDemoShowAnimationTickers YES
+#define OLDemoShowAnimationTickers 0
 
 @implementation OLAppDelegate
 
