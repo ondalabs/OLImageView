@@ -110,7 +110,7 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
         return [OLImage imageWithData:[NSData dataWithContentsOfFile:path] scale:2];
     }
     
-    path = [self getResourceFilePath:path withSuffix:nil];
+    path = [self getResourceFilePath:name withSuffix:nil];
     return [OLImage imageWithData:[NSData dataWithContentsOfFile:path] scale:1];
 }
 
@@ -174,7 +174,7 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
     
     // Load First Frame
     CGImageRef firstImage = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
-    [self.images addObject:[UIImage imageWithCGImage:firstImage]];
+    [self.images addObject:[UIImage imageWithCGImage:firstImage scale:scale orientation:UIImageOrientationUp]];
     CFRelease(firstImage);
     
     NSTimeInterval firstFrameDuration = CGImageSourceGetGifFrameDelay(imageSource, 0);
@@ -188,7 +188,7 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
             self.totalDuration += frameDuration;
 
             CGImageRef frameImageRef = CGImageSourceCreateImageAtIndex(imageSource, i, NULL);
-            [self.images addObject:[UIImage imageWithCGImage:frameImageRef]];
+            [self.images addObject:[UIImage imageWithCGImage:frameImageRef scale:scale orientation:UIImageOrientationUp]];
             CFRelease(frameImageRef);
         }
         CFRelease(imageSource);
