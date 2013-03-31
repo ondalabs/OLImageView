@@ -42,19 +42,6 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
     return frameDuration;
 }
 
-inline static NSTimeInterval CGImageSourceGetFramesAndDurations(NSTimeInterval *frameDurations, NSMutableArray *arrayToFill, CGImageSourceRef imageSource, NSUInteger numberOfFrames)
-{
-    NSTimeInterval finalDuration = 0;
-    for (NSUInteger i = 0; i < numberOfFrames; ++i) {
-        frameDurations[i] = CGImageSourceGetGifFrameDelay(imageSource, i);
-        CGImageRef theImage = CGImageSourceCreateImageAtIndex(imageSource, i, NULL);
-        [arrayToFill addObject:[UIImage imageWithCGImage:theImage]];
-        CFRelease(theImage);
-        finalDuration += frameDurations[i];
-    }
-    return finalDuration;
-}
-
 @interface OLImage ()
 
 @property (nonatomic, readwrite) NSMutableArray *images;
@@ -70,69 +57,54 @@ inline static NSTimeInterval CGImageSourceGetFramesAndDurations(NSTimeInterval *
 
 + (id)imageWithData:(NSData *)data
 {
-    CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
-    if (!imageSource) {
-        return [UIImage imageWithData:data];
-    }
-    NSUInteger numberOfFrames = CGImageSourceGetCount(imageSource);
-    if (numberOfFrames == 1 || !UTTypeConformsTo(CGImageSourceGetType(imageSource), kUTTypeGIF)) {
-        CFRelease(imageSource);
-        return [UIImage imageWithData:data];
-    }
-    
-    NSDictionary *imageProperties = CFBridgingRelease(CGImageSourceCopyProperties(imageSource, NULL));
-    NSDictionary *GIFProperties = [imageProperties objectForKey:(NSString *)kCGImagePropertyGIFDictionary];
-    
-    OLImage *animatedImage = [[OLImage  alloc] init];
-    animatedImage.images = [NSMutableArray arrayWithCapacity:numberOfFrames];
-    animatedImage.frameDurations = (NSTimeInterval *)malloc(numberOfFrames  * sizeof(NSTimeInterval));
-    animatedImage.totalDuration = 0.0;
-    animatedImage.loopCount = [GIFProperties[(NSString *)kCGImagePropertyGIFLoopCount] unsignedIntegerValue];
-    
-    //Load First Frame
-    animatedImage.frameDurations[0] = CGImageSourceGetGifFrameDelay(imageSource, 0);
-    
-    CGImageRef firstImage = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
-    [animatedImage.images addObject:[UIImage imageWithCGImage:firstImage]];
-    CFRelease(firstImage);
-    animatedImage.totalDuration += animatedImage.frameDurations[0];
-    
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        for (NSUInteger i = 1; i < numberOfFrames; ++i) {
-            animatedImage.frameDurations[i] = CGImageSourceGetGifFrameDelay(imageSource, i);
-            CGImageRef frameImage = CGImageSourceCreateImageAtIndex(imageSource, i, NULL);
-            [animatedImage.images addObject:[UIImage imageWithCGImage:frameImage]];
-            CFRelease(frameImage);
-            animatedImage.totalDuration += animatedImage.frameDurations[i];
-        }
-        
-        CFRelease(imageSource);
-    });
-    
-    return animatedImage;
+    return [[self alloc] initWithData:data];
 }
 
 - (id)initWithData:(NSData *)data {
     CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
     
     if (!imageSource) {
-        return nil;
+        return [super initWithData:data];
     }
     
-    if (!UTTypeConformsTo(CGImageSourceGetType(imageSource), kUTTypeGIF)) {
+    NSUInteger numberOfFrames = CGImageSourceGetCount(imageSource);
+    
+    if (numberOfFrames == 1 || !UTTypeConformsTo(CGImageSourceGetType(imageSource), kUTTypeGIF)) {
         CFRelease(imageSource);
         return [super initWithData:data];
     }
     
     self = [super init];
     
-    NSUInteger numberOfFrames = CGImageSourceGetCount(imageSource);
+    NSDictionary *imageProperties = CFBridgingRelease(CGImageSourceCopyProperties(imageSource, NULL));
+    NSDictionary *GIFProperties = [imageProperties objectForKey:(NSString *)kCGImagePropertyGIFDictionary];
     
-    self.frameDurations = (NSTimeInterval *) malloc(numberOfFrames  * sizeof(NSTimeInterval));
+    self.frameDurations = (NSTimeInterval *)malloc(numberOfFrames  * sizeof(NSTimeInterval));
+    self.loopCount = [GIFProperties[(NSString *)kCGImagePropertyGIFLoopCount] unsignedIntegerValue];
     self.images = [NSMutableArray arrayWithCapacity:numberOfFrames];
-    self.totalDuration = CGImageSourceGetFramesAndDurations(self.frameDurations, self.images, imageSource, numberOfFrames);
     
-    CFRelease(imageSource);
+    // Load First Frame
+    CGImageRef firstImage = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    [self.images addObject:[UIImage imageWithCGImage:firstImage]];
+    CFRelease(firstImage);
+    
+    NSTimeInterval firstFrameDuration = CGImageSourceGetGifFrameDelay(imageSource, 0);
+    self.frameDurations[0] = firstFrameDuration;
+    self.totalDuration = firstFrameDuration;
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        for (NSUInteger i = 1; i < numberOfFrames; ++i) {
+            NSTimeInterval frameDuration = CGImageSourceGetGifFrameDelay(imageSource, i);
+            self.frameDurations[i] = frameDuration;
+            self.totalDuration += frameDuration;
+
+            CGImageRef frameImageRef = CGImageSourceCreateImageAtIndex(imageSource, i, NULL);
+            [self.images addObject:[UIImage imageWithCGImage:frameImageRef]];
+            CFRelease(frameImageRef);
+        }
+        CFRelease(imageSource);
+    });
+    
     return self;
 }
 
