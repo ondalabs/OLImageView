@@ -55,12 +55,34 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
 
 @synthesize images;
 
+#pragma mark - Class Methods
+
++ (UIImage *)imageNamed:(NSString *)name
+{
+    NSString *path = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:name];
+    
+    return ([[NSFileManager defaultManager] fileExistsAtPath:path]) ? [OLImage imageWithContentsOfFile:path] : nil;
+}
+
++ (UIImage *)imageWithContentsOfFile:(NSString *)path
+{
+    return [[self alloc] initWithContentsOfFile:path];
+}
+
 + (id)imageWithData:(NSData *)data
 {
     return [[self alloc] initWithData:data];
 }
 
-- (id)initWithData:(NSData *)data {
+#pragma mark - Instance Methods
+
+- (id)initWithContentsOfFile:(NSString *)path
+{
+    return [self initWithData:[NSData dataWithContentsOfFile:path]];
+}
+
+- (id)initWithData:(NSData *)data
+{
     CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
     
     if (!imageSource) {
@@ -108,16 +130,12 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
     return self;
 }
 
-+ (UIImage *)imageNamed:(NSString *)name
+- (CGSize)size
 {
-    NSString *path = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:name];
-    
-    return ([[NSFileManager defaultManager] fileExistsAtPath:path]) ? [OLImage imageWithContentsOfFile:path] : nil;
-}
-
-+ (UIImage *)imageWithContentsOfFile:(NSString *)path
-{
-    return [OLImage imageWithData:[NSData dataWithContentsOfFile:path]];
+    if (self.images.count) {
+        return [[self.images objectAtIndex:0] size];
+    }
+    return [super size];
 }
 
 - (CGImageRef)CGImage
@@ -129,15 +147,8 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
     }
 }
 
-- (CGSize)size
+- (NSTimeInterval)duration
 {
-    if (self.images.count) {
-        return [[self.images objectAtIndex:0] size];
-    }
-    return [super size];
-}
-
-- (NSTimeInterval)duration {
     return self.images ? self.totalDuration : [super duration];
 }
 
