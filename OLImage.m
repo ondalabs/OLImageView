@@ -57,11 +57,61 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
 
 #pragma mark - Class Methods
 
++ (NSString *)getResourceFilePath:(NSString *)path withSuffix:(NSString *)suffix
+{
+    if (!path.length) {
+        return nil;
+    }
+    
+    NSString *extension = [path pathExtension];
+    NSString *pathWithoutExtension = [path stringByDeletingPathExtension];
+    NSString *suffixedPath = pathWithoutExtension;
+    NSString *name = [pathWithoutExtension lastPathComponent];
+    NSString *resourcePath = nil;
+    
+    if (suffix && [name rangeOfString:suffix].location == NSNotFound) {
+        suffixedPath = [suffixedPath stringByAppendingString:suffix];
+    }
+    
+    if ((resourcePath = [[NSBundle mainBundle] pathForResource:suffixedPath ofType:extension])) {
+        if ([resourcePath rangeOfString:suffixedPath].location != NSNotFound) {
+            return resourcePath;
+        }
+    }
+    
+    const NSArray * const kSupportedExtensions = @[@"gif", @"png", @"jpg", @"jpeg", @"tiff", @"tif", @"bmp", @"bmpf", @"ico", @"cur", @"xbm"];
+    if (!extension.length || [kSupportedExtensions indexOfObject:[extension lowercaseString]] == NSNotFound) {
+        for (NSString *supportedExtension in kSupportedExtensions) {
+            if ((resourcePath = [[NSBundle mainBundle] pathForResource:suffixedPath ofType:supportedExtension])) {
+                if ([resourcePath rangeOfString:suffixedPath].location != NSNotFound) {
+                    return resourcePath;
+                }
+            }
+        }
+    }
+    return nil;
+}
+
 + (UIImage *)imageNamed:(NSString *)name
 {
-    NSString *path = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:name];
+    BOOL isiPad = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad;
+    BOOL isRetina = [[UIScreen mainScreen] scale] > 1;
+    NSString *path = name;
     
-    return ([[NSFileManager defaultManager] fileExistsAtPath:path]) ? [OLImage imageWithContentsOfFile:path] : nil;
+    if (isiPad) {
+        if (isRetina && (path = [self getResourceFilePath:name withSuffix:@"@2x~ipad"])) {
+            return [OLImage imageWithData:[NSData dataWithContentsOfFile:path] scale:2];
+        }
+        if ((path = [self getResourceFilePath:name withSuffix:@"~ipad"])) {
+            return [OLImage imageWithData:[NSData dataWithContentsOfFile:path] scale:1];
+        }
+    }
+    if (isRetina && (path = [self getResourceFilePath:name withSuffix:@"@2x"])) {
+        return [OLImage imageWithData:[NSData dataWithContentsOfFile:path] scale:2];
+    }
+    
+    path = [self getResourceFilePath:path withSuffix:nil];
+    return [OLImage imageWithData:[NSData dataWithContentsOfFile:path] scale:1];
 }
 
 + (UIImage *)imageWithContentsOfFile:(NSString *)path
@@ -74,15 +124,32 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
     return [[self alloc] initWithData:data];
 }
 
++ (id)imageWithData:(NSData *)data scale:(CGFloat)scale
+{
+    return [[self alloc] initWithData:data scale:scale];
+}
+
 #pragma mark - Instance Methods
 
 - (id)initWithContentsOfFile:(NSString *)path
 {
-    return [self initWithData:[NSData dataWithContentsOfFile:path]];
+    NSRange retinaSuffixRange = [[path lastPathComponent] rangeOfString:@"@2x"];
+    BOOL isRetinaPath = retinaSuffixRange.length && retinaSuffixRange.location != NSNotFound;
+    return [self initWithData:[NSData dataWithContentsOfFile:path]
+                        scale:isRetinaPath ? 2 : 1];
 }
 
 - (id)initWithData:(NSData *)data
 {
+    return [self initWithData:data scale:1];
+}
+
+- (id)initWithData:(NSData *)data scale:(CGFloat)scale
+{
+    if (!data) {
+        return nil;
+    }
+    
     CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
     
     if (!imageSource) {
@@ -144,6 +211,24 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
         return [[self.images objectAtIndex:0] CGImage];
     } else {
         return [super CGImage];
+    }
+}
+
+- (UIImageOrientation)imageOrientation
+{
+    if (self.images.count) {
+        return [[self.images objectAtIndex:0] imageOrientation];
+    } else {
+        return [super imageOrientation];
+    }
+}
+
+- (CGFloat)scale
+{
+    if (self.images.count) {
+        return [(UIImage *)[self.images objectAtIndex:0] scale];
+    } else {
+        return [super scale];
     }
 }
 
