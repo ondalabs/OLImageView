@@ -69,12 +69,12 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
     NSString *name = [pathWithoutExtension lastPathComponent];
     NSString *resourcePath = nil;
     
-    if (suffix && [name rangeOfString:suffix].location == NSNotFound) {
+    if (suffix && [name rangeOfString:suffix options:NSCaseInsensitiveSearch].location == NSNotFound) {
         suffixedPath = [suffixedPath stringByAppendingString:suffix];
     }
     
     if ((resourcePath = [[NSBundle mainBundle] pathForResource:suffixedPath ofType:extension])) {
-        if ([resourcePath rangeOfString:suffixedPath].location != NSNotFound) {
+        if ([resourcePath rangeOfString:suffixedPath options:NSCaseInsensitiveSearch].location != NSNotFound) {
             return resourcePath;
         }
     }
@@ -83,7 +83,7 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
     if (!extension.length || [kSupportedExtensions indexOfObject:[extension lowercaseString]] == NSNotFound) {
         for (NSString *supportedExtension in kSupportedExtensions) {
             if ((resourcePath = [[NSBundle mainBundle] pathForResource:suffixedPath ofType:supportedExtension])) {
-                if ([resourcePath rangeOfString:suffixedPath].location != NSNotFound) {
+                if ([resourcePath rangeOfString:suffixedPath options:NSCaseInsensitiveSearch].location != NSNotFound) {
                     return resourcePath;
                 }
             }
@@ -133,7 +133,7 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
 
 - (id)initWithContentsOfFile:(NSString *)path
 {
-    NSRange retinaSuffixRange = [[path lastPathComponent] rangeOfString:@"@2x"];
+    NSRange retinaSuffixRange = [[path lastPathComponent] rangeOfString:@"@2x" options:NSCaseInsensitiveSearch];
     BOOL isRetinaPath = retinaSuffixRange.length && retinaSuffixRange.location != NSNotFound;
     return [self initWithData:[NSData dataWithContentsOfFile:path]
                         scale:isRetinaPath ? 2 : 1];
