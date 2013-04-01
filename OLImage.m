@@ -96,7 +96,7 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
 {
     BOOL isiPad = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad;
     BOOL isRetina = [[UIScreen mainScreen] scale] > 1;
-    NSString *path = name;
+    NSString *path;
     
     if (isiPad) {
         if (isRetina && (path = [self getResourceFilePath:name withSuffix:@"@2x~ipad"])) {
