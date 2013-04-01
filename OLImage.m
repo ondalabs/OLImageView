@@ -153,14 +153,22 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
     CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
     
     if (!imageSource) {
-        return [super initWithData:data];
+        if (scale > 1 && [[self superclass] instancesRespondToSelector:@selector(initWithData:scale:)]) {
+            return [super initWithData:data scale:scale];
+        } else {
+            return [super initWithData:data];
+        }
     }
     
     NSUInteger numberOfFrames = CGImageSourceGetCount(imageSource);
     
     if (numberOfFrames == 1 || !UTTypeConformsTo(CGImageSourceGetType(imageSource), kUTTypeGIF)) {
         CFRelease(imageSource);
-        return [super initWithData:data];
+        if (scale > 1 && [[self superclass] instancesRespondToSelector:@selector(initWithData:scale:)]) {
+            return [super initWithData:data scale:scale];
+        } else {
+            return [super initWithData:data];
+        }
     }
     
     self = [super init];
