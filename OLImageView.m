@@ -85,6 +85,9 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
         [self startAnimating];
     } else {
         [super setImage:image];
+        //DMC: If the new image is nil, remove the layer contents so the image view on-screen goes blank.
+        if (image == nil)
+            self.layer.contents = nil;
     }
 }
 
