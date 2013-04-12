@@ -150,14 +150,42 @@ inline static NSTimeInterval CGImageSourceGetFramesAndDurations(NSTimeInterval *
 
 - (CGSize)size
 {
-    if (self.images) {
+    if (self.images.count) {
         return [[self.images objectAtIndex:0] size];
     }
     return [super size];
 }
 
-- (NSTimeInterval)duration {
-    return self.totalDuration;
+- (CGImageRef)CGImage
+{
+    if (self.images.count) {
+        return [[self.images objectAtIndex:0] CGImage];
+    } else {
+        return [super CGImage];
+    }
+}
+
+- (UIImageOrientation)imageOrientation
+{
+    if (self.images.count) {
+        return [[self.images objectAtIndex:0] imageOrientation];
+    } else {
+        return [super imageOrientation];
+    }
+}
+
+- (CGFloat)scale
+{
+    if (self.images.count) {
+        return [(UIImage *)[self.images objectAtIndex:0] scale];
+    } else {
+        return [super scale];
+    }
+}
+
+- (NSTimeInterval)duration
+{
+    return self.images ? self.totalDuration : [super duration];
 }
 
 - (void)dealloc {
