@@ -71,6 +71,10 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
 
 - (void)setImage:(UIImage *)image
 {
+    if (image == self.image) {
+        return;
+    }
+    
     [self stopAnimating];
     
     self.currentFrameIndex = 0;
@@ -78,6 +82,7 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     self.accumulator = 0;
     
     if ([image isKindOfClass:[OLImage class]] && image.images) {
+        [super setImage:nil];
         self.animatedImage = (OLImage *)image;
         self.loopCountdown = self.animatedImage.loopCount ?: NSUIntegerMax;
         [self startAnimating];
