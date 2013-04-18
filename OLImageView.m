@@ -17,7 +17,7 @@
 @property (nonatomic) NSTimeInterval accumulator;
 @property (nonatomic) NSUInteger currentFrameIndex;
 @property (nonatomic) NSUInteger loopCountdown;
-
+@property (nonatomic) BOOL started;
 @end
 
 @implementation OLImageView
@@ -32,6 +32,7 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     self = [super init];
     if (self) {
         self.currentFrameIndex = 0;
+		self.autoplay = YES;
     }
     return self;
 }
@@ -65,7 +66,7 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
         
         _runLoopMode = runLoopMode;
         
-        [self startAnimating];
+        [self startAutoplaying];
     }
 }
 
@@ -80,7 +81,7 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     if ([image isKindOfClass:[OLImage class]] && image.images) {
         self.animatedImage = (OLImage *)image;
         self.loopCountdown = self.animatedImage.loopCount ?: NSUIntegerMax;
-        [self startAnimating];
+		[self startAutoplaying];
     } else {
         self.animatedImage = nil;
         [super setImage:image];
@@ -96,6 +97,16 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     }
 }
 
+-(void)setAutoplay:(BOOL)autoplay {
+	
+	_autoplay = autoplay;
+	if(_autoplay) {
+		[self stopAnimating];
+		self.currentFrameIndex = 0;
+		[self startAutoplaying];
+	}
+}
+
 - (BOOL)isAnimating
 {
     return [super isAnimating] || (self.displayLink && !self.displayLink.isPaused);
@@ -109,8 +120,10 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     }
     
     self.loopCountdown = 0;
-    
+    self.currentFrameIndex = 0;
     self.displayLink.paused = YES;
+	
+	[[NSNotificationCenter defaultCenter]postNotificationName:kOLImageViewGIFAnimationEnded object:self];
 }
 
 - (void)startAnimating
@@ -127,11 +140,19 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     self.loopCountdown = self.animatedImage.loopCount ?: NSUIntegerMax;
     
     if (!self.displayLink) {
+		self.started = YES;
         self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(changeKeyframe:)];
         [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:self.runLoopMode];
     }
     
     self.displayLink.paused = NO;
+	[[NSNotificationCenter defaultCenter]postNotificationName:kOLImageViewGIFAnimationStarted object:self];
+}
+
+-(void)startAutoplaying {
+	
+	if(self.autoplay || self.started)
+		[self startAnimating];
 }
 
 - (void)changeKeyframe:(CADisplayLink *)displayLink
@@ -146,6 +167,7 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
                 return;
             }
             self.currentFrameIndex = 0;
+			[[NSNotificationCenter defaultCenter]postNotificationName:kOLImageViewGIFAnimationLooped object:self];
         }
         [self.layer setNeedsDisplay];
     }
@@ -163,7 +185,7 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
 {
     [super didMoveToWindow];
     if (self.window) {
-        [self startAnimating];
+		[self startAutoplaying];
     } else {
         [self stopAnimating];
     }

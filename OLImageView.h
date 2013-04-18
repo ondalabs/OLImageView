@@ -8,7 +8,13 @@
 
 #import <UIKit/UIKit.h>
 
+static NSString *kOLImageViewGIFAnimationStarted = @"kOLImageViewGIFAnimationStarted";
+static NSString *kOLImageViewGIFAnimationLooped = @"kOLImageViewGIFAnimationLooped";
+static NSString *kOLImageViewGIFAnimationEnded = @"kOLImageViewGIFAnimationEnded";
+
 @interface OLImageView : UIImageView
+
+@property(nonatomic, readwrite) BOOL autoplay;
 
 /**
  The animation runloop mode.
