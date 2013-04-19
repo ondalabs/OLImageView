@@ -10,6 +10,34 @@
 #import "OLImage.h"
 #import <QuartzCore/QuartzCore.h>
 
+#pragma mark - OLWeakProxy
+
+@interface OLWeakProxy : NSObject
+
+@property (nonatomic, weak) NSObject *original;
+
+@end
+
+@implementation OLWeakProxy
+
++ (instancetype)proxyWithOriginal:(NSObject *)original {
+    OLWeakProxy *proxy = [[self alloc] init];
+    proxy.original = original;
+    return proxy;
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel {
+    return [self.original methodSignatureForSelector:sel];
+}
+
+- (void)forwardInvocation:(NSInvocation *)inv {
+    [inv invokeWithTarget:self.original];
+}
+
+@end
+
+#pragma mark - OLImageView
+
 @interface OLImageView ()
 
 @property (nonatomic, strong) OLImage *animatedImage;
