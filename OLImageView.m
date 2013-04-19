@@ -10,6 +10,32 @@
 #import "OLImage.h"
 #import <QuartzCore/QuartzCore.h>
 
+#pragma mark - OLWeakProxy
+
+@interface OLWeakProxy : NSProxy 
+@end
+
+@implementation OLWeakProxy {
+    __weak NSObject *_object;
+}
+
+- (id)initWithObject:(id)object {
+    _object = object;
+    return self;
+}
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel {
+    return [_object methodSignatureForSelector:sel];
+}
+
+- (void)forwardInvocation:(NSInvocation *)inv {
+    [inv invokeWithTarget:_object];
+}
+
+@end
+
+#pragma mark - OLImageView
+
 @interface OLImageView ()
 
 @property (nonatomic, strong) OLImage *animatedImage;
@@ -132,7 +158,7 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     self.loopCountdown = self.animatedImage.loopCount ?: NSUIntegerMax;
     
     if (!self.displayLink) {
-        self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(changeKeyframe:)];
+        self.displayLink = [CADisplayLink displayLinkWithTarget:[[OLWeakProxy alloc] initWithObject:self] selector:@selector(changeKeyframe:)];
         [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:self.runLoopMode];
     }
     
