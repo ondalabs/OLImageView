@@ -160,7 +160,7 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     self.loopCountdown = self.animatedImage.loopCount ?: NSUIntegerMax;
     
     if (!self.displayLink) {
-        self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(changeKeyframe:)];
+        self.displayLink = [CADisplayLink displayLinkWithTarget:[OLWeakProxy proxyWithOriginal:self] selector:@selector(changeKeyframe:)];
         [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:self.runLoopMode];
     }
     
