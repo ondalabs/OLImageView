@@ -36,17 +36,18 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     return self;
 }
 
-- (void)dealloc
+- (CADisplayLink *)displayLink
 {
-    self.displayLink = nil;
-}
-
-- (void)setDisplayLink:(CADisplayLink *)displayLink
-{
-    if (displayLink != _displayLink) {
+    if (self.superview) {
+        if (!_displayLink) {
+            _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(changeKeyframe:)];
+            [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:self.runLoopMode];
+        }
+    } else {
         [_displayLink invalidate];
-        _displayLink = displayLink;
+        _displayLink = nil;
     }
+    return _displayLink;
 }
 
 - (NSString *)runLoopMode
@@ -131,11 +132,6 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     
     self.loopCountdown = self.animatedImage.loopCount ?: NSUIntegerMax;
     
-    if (!self.displayLink) {
-        self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(changeKeyframe:)];
-        [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:self.runLoopMode];
-    }
-    
     self.displayLink.paused = NO;
 }
 
@@ -170,7 +166,25 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     if (self.window) {
         [self startAnimating];
     } else {
-        [self stopAnimating];
+       dispatch_async(dispatch_get_main_queue(), ^{
+           if (!self.window) {
+               [self stopAnimating];
+           }
+       });
+    }
+}
+
+- (void)didMoveToSuperview
+{
+    [super didMoveToSuperview];
+    if (self.superview) {
+        //Has a superview, make sure it has a displayLink
+        [self displayLink];
+    } else {
+        //Doesn't have superview, let's check later if we need to remove the displayLink
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self displayLink];
+        });
     }
 }
 
