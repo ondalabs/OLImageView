@@ -186,4 +186,9 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     return self.animatedImage ?: [super image];
 }
 
+- (CGSize)sizeThatFits:(CGSize)size
+{
+    return self.image.size;
+}
+
 @end
