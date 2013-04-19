@@ -12,26 +12,24 @@
 
 #pragma mark - OLWeakProxy
 
-@interface OLWeakProxy : NSObject
-
-@property (nonatomic, weak) NSObject *original;
-
+@interface OLWeakProxy : NSProxy 
 @end
 
-@implementation OLWeakProxy
+@implementation OLWeakProxy {
+    __weak NSObject *_object;
+}
 
-+ (instancetype)proxyWithOriginal:(NSObject *)original {
-    OLWeakProxy *proxy = [[self alloc] init];
-    proxy.original = original;
-    return proxy;
+- (id)initWithObject:(id)object {
+    _object = object;
+    return self;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)sel {
-    return [self.original methodSignatureForSelector:sel];
+    return [_object methodSignatureForSelector:sel];
 }
 
 - (void)forwardInvocation:(NSInvocation *)inv {
-    [inv invokeWithTarget:self.original];
+    [inv invokeWithTarget:_object];
 }
 
 @end
@@ -160,7 +158,7 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     self.loopCountdown = self.animatedImage.loopCount ?: NSUIntegerMax;
     
     if (!self.displayLink) {
-        self.displayLink = [CADisplayLink displayLinkWithTarget:[OLWeakProxy proxyWithOriginal:self] selector:@selector(changeKeyframe:)];
+        self.displayLink = [CADisplayLink displayLinkWithTarget:[[OLWeakProxy alloc] initWithObject:self] selector:@selector(changeKeyframe:)];
         [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:self.runLoopMode];
     }
     
