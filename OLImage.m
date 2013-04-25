@@ -42,17 +42,9 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
     return frameDuration;
 }
 
-inline static NSTimeInterval CGImageSourceGetFramesAndDurations(NSTimeInterval *frameDurations, NSMutableArray *arrayToFill, CGImageSourceRef imageSource, NSUInteger numberOfFrames)
+inline static BOOL CGImageSourceContainsAnimatedGif(CGImageSourceRef imageSource)
 {
-    NSTimeInterval finalDuration = 0;
-    for (NSUInteger i = 0; i < numberOfFrames; ++i) {
-        frameDurations[i] = CGImageSourceGetGifFrameDelay(imageSource, i);
-        CGImageRef theImage = CGImageSourceCreateImageAtIndex(imageSource, i, NULL);
-        [arrayToFill addObject:[UIImage imageWithCGImage:theImage]];
-        CFRelease(theImage);
-        finalDuration += frameDurations[i];
-    }
-    return finalDuration;
+    return imageSource && UTTypeConformsTo(CGImageSourceGetType(imageSource), kUTTypeGIF) && CGImageSourceGetCount(imageSource) > 1;
 }
 
 @interface OLImage ()
@@ -68,73 +60,7 @@ inline static NSTimeInterval CGImageSourceGetFramesAndDurations(NSTimeInterval *
 
 @synthesize images;
 
-+ (id)imageWithData:(NSData *)data
-{
-    CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
-    if (!imageSource) {
-        return [UIImage imageWithData:data];
-    }
-    NSUInteger numberOfFrames = CGImageSourceGetCount(imageSource);
-    if (numberOfFrames == 1 || !UTTypeConformsTo(CGImageSourceGetType(imageSource), kUTTypeGIF)) {
-        CFRelease(imageSource);
-        return [UIImage imageWithData:data];
-    }
-    
-    NSDictionary *imageProperties = CFBridgingRelease(CGImageSourceCopyProperties(imageSource, NULL));
-    NSDictionary *GIFProperties = [imageProperties objectForKey:(NSString *)kCGImagePropertyGIFDictionary];
-    
-    OLImage *animatedImage = [[OLImage  alloc] init];
-    animatedImage.images = [NSMutableArray arrayWithCapacity:numberOfFrames];
-    animatedImage.frameDurations = (NSTimeInterval *)malloc(numberOfFrames  * sizeof(NSTimeInterval));
-    animatedImage.totalDuration = 0.0;
-    animatedImage.loopCount = [GIFProperties[(NSString *)kCGImagePropertyGIFLoopCount] unsignedIntegerValue];
-    
-    //Load First Frame
-    animatedImage.frameDurations[0] = CGImageSourceGetGifFrameDelay(imageSource, 0);
-    
-    CGImageRef firstImage = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
-    [animatedImage.images addObject:[UIImage imageWithCGImage:firstImage]];
-    CFRelease(firstImage);
-    animatedImage.totalDuration += animatedImage.frameDurations[0];
-    
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        for (NSUInteger i = 1; i < numberOfFrames; ++i) {
-            animatedImage.frameDurations[i] = CGImageSourceGetGifFrameDelay(imageSource, i);
-            CGImageRef frameImage = CGImageSourceCreateImageAtIndex(imageSource, i, NULL);
-            [animatedImage.images addObject:[UIImage imageWithCGImage:frameImage]];
-            CFRelease(frameImage);
-            animatedImage.totalDuration += animatedImage.frameDurations[i];
-        }
-        
-        CFRelease(imageSource);
-    });
-    
-    return animatedImage;
-}
-
-- (id)initWithData:(NSData *)data {
-    CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
-    
-    if (!imageSource) {
-        return nil;
-    }
-    
-    if (!UTTypeConformsTo(CGImageSourceGetType(imageSource), kUTTypeGIF)) {
-        CFRelease(imageSource);
-        return [super initWithData:data];
-    }
-    
-    self = [super init];
-    
-    NSUInteger numberOfFrames = CGImageSourceGetCount(imageSource);
-    
-    self.frameDurations = (NSTimeInterval *) malloc(numberOfFrames  * sizeof(NSTimeInterval));
-    self.images = [NSMutableArray arrayWithCapacity:numberOfFrames];
-    self.totalDuration = CGImageSourceGetFramesAndDurations(self.frameDurations, self.images, imageSource, numberOfFrames);
-    
-    CFRelease(imageSource);
-    return self;
-}
+#pragma mark - Class Methods
 
 + (UIImage *)imageNamed:(NSString *)name
 {
@@ -146,6 +72,137 @@ inline static NSTimeInterval CGImageSourceGetFramesAndDurations(NSTimeInterval *
 + (UIImage *)imageWithContentsOfFile:(NSString *)path
 {
     return [OLImage imageWithData:[NSData dataWithContentsOfFile:path]];
+}
+
++ (id)imageWithData:(NSData *)data
+{
+    if (!data) {
+        return nil;
+    }
+    
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
+    UIImage *image;
+    
+    if (CGImageSourceContainsAnimatedGif(imageSource)) {
+        image = [[self alloc] initWithCGImageSource:imageSource scale:1];
+    } else {
+        image = [super imageWithData:data];
+    }
+    
+    if (imageSource) {
+        CFRelease(imageSource);
+    }
+    
+    return image;
+}
+
++ (id)imageWithData:(NSData *)data scale:(CGFloat)scale
+{
+    if (!data) {
+        return nil;
+    }
+    
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
+    UIImage *image;
+    
+    if (CGImageSourceContainsAnimatedGif(imageSource)) {
+        image = [[self alloc] initWithCGImageSource:imageSource scale:scale];
+    } else {
+        image = [super imageWithData:data scale:scale];
+    }
+    
+    if (imageSource) {
+        CFRelease(imageSource);
+    }
+    
+    return image;
+}
+
+#pragma mark - Instance Methods
+
+- (id)initWithData:(NSData *)data
+{
+    if (!data) {
+        return nil;
+    }
+    
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
+    
+    if (CGImageSourceContainsAnimatedGif(imageSource)) {
+        self = [self initWithCGImageSource:imageSource scale:1];
+    } else {
+        self = [super initWithData:data];
+    }
+    
+    if (imageSource) {
+        CFRelease(imageSource);
+    }
+    
+    return self;
+}
+
+- (id)initWithData:(NSData *)data scale:(CGFloat)scale
+{
+    if (!data) {
+        return nil;
+    }
+    
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)(data), NULL);
+    
+    if (CGImageSourceContainsAnimatedGif(imageSource)) {
+        self = [self initWithCGImageSource:imageSource scale:scale];
+    } else {
+        self = [super initWithData:data scale:scale];
+    }
+    
+    if (imageSource) {
+        CFRelease(imageSource);
+    }
+    
+    return self;
+}
+
+- (id)initWithCGImageSource:(CGImageSourceRef)imageSource scale:(CGFloat)scale
+{
+    self = [super init];
+    if (!imageSource || !self) {
+        return self;
+    }
+    
+    CFRetain(imageSource);
+    
+    NSUInteger numberOfFrames = CGImageSourceGetCount(imageSource);
+    
+    NSDictionary *imageProperties = CFBridgingRelease(CGImageSourceCopyProperties(imageSource, NULL));
+    NSDictionary *gifProperties = [imageProperties objectForKey:(NSString *)kCGImagePropertyGIFDictionary];
+    
+    self.frameDurations = (NSTimeInterval *)malloc(numberOfFrames  * sizeof(NSTimeInterval));
+    self.loopCount = [gifProperties[(NSString *)kCGImagePropertyGIFLoopCount] unsignedIntegerValue];
+    self.images = [NSMutableArray arrayWithCapacity:numberOfFrames];
+    
+    // Load First Frame
+    CGImageRef firstImage = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    [self.images addObject:[UIImage imageWithCGImage:firstImage scale:scale orientation:UIImageOrientationUp]];
+    CFRelease(firstImage);
+    
+    NSTimeInterval firstFrameDuration = CGImageSourceGetGifFrameDelay(imageSource, 0);
+    self.frameDurations[0] = firstFrameDuration;
+    self.totalDuration = firstFrameDuration;
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        for (NSUInteger i = 1; i < numberOfFrames; ++i) {
+            NSTimeInterval frameDuration = CGImageSourceGetGifFrameDelay(imageSource, i);
+            self.frameDurations[i] = frameDuration;
+            self.totalDuration += frameDuration;
+            
+            CGImageRef frameImageRef = CGImageSourceCreateImageAtIndex(imageSource, i, NULL);
+            [self.images addObject:[UIImage imageWithCGImage:frameImageRef scale:scale orientation:UIImageOrientationUp]];
+            CFRelease(frameImageRef);
+        }
+        CFRelease(imageSource);
+    });
+    
+    return self;
 }
 
 - (CGSize)size
