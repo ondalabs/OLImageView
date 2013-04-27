@@ -47,6 +47,12 @@ inline static BOOL CGImageSourceContainsAnimatedGif(CGImageSourceRef imageSource
     return imageSource && UTTypeConformsTo(CGImageSourceGetType(imageSource), kUTTypeGIF) && CGImageSourceGetCount(imageSource) > 1;
 }
 
+inline static BOOL isRetinaFilePath(NSString *path)
+{
+    NSRange retinaSuffixRange = [[path lastPathComponent] rangeOfString:@"@2x" options:NSCaseInsensitiveSearch];
+    return retinaSuffixRange.length && retinaSuffixRange.location != NSNotFound;
+}
+
 @interface OLImage ()
 
 @property (nonatomic, readwrite) NSMutableArray *images;
@@ -71,7 +77,8 @@ inline static BOOL CGImageSourceContainsAnimatedGif(CGImageSourceRef imageSource
 
 + (id)imageWithContentsOfFile:(NSString *)path
 {
-    return [self imageWithData:[NSData dataWithContentsOfFile:path]];
+    return [self imageWithData:[NSData dataWithContentsOfFile:path]
+                         scale:isRetinaFilePath(path) ? 2.0f : 1.0f];
 }
 
 + (id)imageWithData:(NSData *)data
@@ -102,6 +109,12 @@ inline static BOOL CGImageSourceContainsAnimatedGif(CGImageSourceRef imageSource
 }
 
 #pragma mark - Initialization methods
+
+- (id)initWithContentsOfFile:(NSString *)path
+{
+    return [self initWithData:[NSData dataWithContentsOfFile:path]
+                        scale:isRetinaFilePath(path) ? 2.0f : 1.0f];
+}
 
 - (id)initWithData:(NSData *)data
 {
