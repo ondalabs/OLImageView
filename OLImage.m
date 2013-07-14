@@ -155,7 +155,7 @@ inline static BOOL isRetinaFilePath(NSString *path)
     
     CFRetain(imageSource);
     
-    NSUInteger numberOfFrames = CGImageSourceGetCount(imageSource);
+    size_t numberOfFrames = CGImageSourceGetCount(imageSource);
     
     NSDictionary *imageProperties = CFBridgingRelease(CGImageSourceCopyProperties(imageSource, NULL));
     NSDictionary *gifProperties = [imageProperties objectForKey:(NSString *)kCGImagePropertyGIFDictionary];
@@ -165,28 +165,35 @@ inline static BOOL isRetinaFilePath(NSString *path)
     self.images = [NSMutableArray arrayWithCapacity:numberOfFrames];
     
     // Load first frame
-    CGImageRef firstImage = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
-    [self.images addObject:[UIImage imageWithCGImage:firstImage scale:scale orientation:UIImageOrientationUp]];
-    CFRelease(firstImage);
+    CGImageRef firstImageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    UIImage *firstImage = [UIImage imageWithCGImage:firstImageRef scale:scale orientation:UIImageOrientationUp];
+    [self.images addObject:firstImage];
+    CFRelease(firstImageRef);
     
     NSTimeInterval firstFrameDuration = CGImageSourceGetGifFrameDelay(imageSource, 0);
     self.frameDurations[0] = firstFrameDuration;
     self.totalDuration = firstFrameDuration;
     
-    // Asynchronously load the remaining frames
-    __weak OLImage *weakSelf = self;
+    // Load frame durations
+    UIImage *placeholder = [[UIImage alloc] init];
+    for (size_t i = 1; i < numberOfFrames; ++i) {
+        [self.images addObject:placeholder];
+        
+        NSTimeInterval frameDuration = CGImageSourceGetGifFrameDelay(imageSource, i);
+        self.frameDurations[i] = frameDuration;
+        self.totalDuration += frameDuration;
+    }
+    
+    // Asynchronously load the remainder of frames
+    __weak __typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        for (NSUInteger i = 1; i < numberOfFrames; ++i) {
-            OLImage *strongSelf = weakSelf;
+        for (size_t i = 1; i < numberOfFrames; ++i) {
+            __strong __typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) {
                 break;
             }
-            NSTimeInterval frameDuration = CGImageSourceGetGifFrameDelay(imageSource, i);
-            strongSelf.frameDurations[i] = frameDuration;
-            strongSelf.totalDuration += frameDuration;
-            
             CGImageRef frameImageRef = CGImageSourceCreateImageAtIndex(imageSource, i, NULL);
-            [strongSelf.images addObject:[UIImage imageWithCGImage:frameImageRef scale:scale orientation:UIImageOrientationUp]];
+            strongSelf.images[i] = [UIImage imageWithCGImage:frameImageRef scale:scale orientation:UIImageOrientationUp];
             CFRelease(frameImageRef);
         }
         CFRelease(imageSource);
