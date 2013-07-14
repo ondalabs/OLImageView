@@ -22,19 +22,11 @@
 
 @implementation OLImageView
 
-const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
+const NSUInteger kTargetFrameRate = 60;
+const NSTimeInterval kMaxTimeStep = 1; // To avoid spiral-o-death
 
 @synthesize runLoopMode = _runLoopMode;
 @synthesize displayLink = _displayLink;
-
-- (id)init
-{
-    self = [super init];
-    if (self) {
-        self.currentFrameIndex = 0;
-    }
-    return self;
-}
 
 - (CADisplayLink *)displayLink
 {
@@ -68,6 +60,11 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
         
         [self startAnimating];
     }
+}
+
+- (UIImage *)image
+{
+    return self.animatedImage ?: [super image];
 }
 
 - (void)setImage:(UIImage *)image
@@ -132,13 +129,21 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     
     self.loopCountdown = self.animatedImage.loopCount ?: NSUIntegerMax;
     
+    NSTimeInterval minFrameDuration = array_gcd(self.animatedImage.frameDurations, self.animatedImage.images.count);
+    NSInteger frameInterval = (NSInteger)(minFrameDuration * kTargetFrameRate);
+    
+    if (frameInterval < 1) {
+        frameInterval = 1;
+    }
+    
+    self.displayLink.frameInterval = frameInterval;
+    
     self.displayLink.paused = NO;
 }
 
 - (void)changeKeyframe:(CADisplayLink *)displayLink
 {
-    self.accumulator += fmin(displayLink.duration, kMaxTimeStep);
-    
+    self.accumulator += fmin(displayLink.duration * displayLink.frameInterval, kMaxTimeStep);
     while (self.accumulator >= self.animatedImage.frameDurations[self.currentFrameIndex]) {
         self.accumulator -= self.animatedImage.frameDurations[self.currentFrameIndex];
         if (++self.currentFrameIndex >= [self.animatedImage.images count]) {
@@ -166,11 +171,11 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     if (self.window) {
         [self startAnimating];
     } else {
-       dispatch_async(dispatch_get_main_queue(), ^{
-           if (!self.window) {
-               [self stopAnimating];
-           }
-       });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (!self.window) {
+                [self stopAnimating];
+            }
+        });
     }
 }
 
@@ -195,14 +200,38 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     }
 }
 
-- (UIImage *)image
-{
-    return self.animatedImage ?: [super image];
-}
-
 - (CGSize)sizeThatFits:(CGSize)size
 {
     return self.image.size;
+}
+
+// http://en.wikipedia.org/wiki/Greatest_common_divisor
+static NSUInteger pair_gcd(NSUInteger a, NSUInteger b)
+{
+    if (a < b) {
+        return pair_gcd(b, a);
+    } else if (a == b) {
+        return b;
+    }
+    
+    while (true) {
+        NSUInteger remainder = a % b;
+        if (remainder == 0) {
+            return b;
+        }
+        a = b;
+        b = remainder;
+    }
+}
+
+static NSTimeInterval array_gcd(NSTimeInterval const *const values, size_t const count)
+{
+    const NSTimeInterval precision = 100.0; // 1/100th of a second precision
+    NSInteger gcd = lrint(values[0] * precision);
+    for (size_t i = 1; i < count; ++i) {
+        gcd = pair_gcd(lrint(values[i] * precision), gcd);
+    }
+    return gcd / precision;
 }
 
 @end
