@@ -15,3 +15,14 @@
 @property (nonatomic, readonly) NSUInteger loopCount;
 
 @end
+
+
+@interface OLImage (IncrementalData)
+
++ (instancetype)imageWithIncrementalData:(NSData *)data;
+- (void)updateWithData:(NSData *)data;
+- (void)updateWithData:(NSData *)data final:(BOOL)finalize;
+
+@property (nonatomic, readonly, getter = isPartial) BOOL partial;
+
+@end

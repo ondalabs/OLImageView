@@ -137,24 +137,28 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
 
 - (void)changeKeyframe:(CADisplayLink *)displayLink
 {
+    if (self.currentFrameIndex >= [self.animatedImage.images count] && [self.animatedImage isPartial]) {
+        return;
+    }
     self.accumulator += fmin(displayLink.duration, kMaxTimeStep);
     
     while (self.accumulator >= self.animatedImage.frameDurations[self.currentFrameIndex]) {
         self.accumulator -= self.animatedImage.frameDurations[self.currentFrameIndex];
-        if (++self.currentFrameIndex >= [self.animatedImage.images count]) {
+        if (++self.currentFrameIndex >= [self.animatedImage.images count] && ![self.animatedImage isPartial]) {
             if (--self.loopCountdown == 0) {
                 [self stopAnimating];
                 return;
             }
             self.currentFrameIndex = 0;
         }
+        self.currentFrameIndex = MIN(self.currentFrameIndex, [self.animatedImage.images count] - 1);
         [self.layer setNeedsDisplay];
     }
 }
 
 - (void)displayLayer:(CALayer *)layer
 {
-    if (!self.animatedImage) {
+    if (!self.animatedImage || [self.animatedImage.images count] == 0) {
         return;
     }
     layer.contents = (__bridge id)([[self.animatedImage.images objectAtIndex:self.currentFrameIndex] CGImage]);

@@ -59,6 +59,7 @@ inline static BOOL isRetinaFilePath(NSString *path)
 @property (nonatomic, readwrite) NSTimeInterval *frameDurations;
 @property (nonatomic, readwrite) NSTimeInterval totalDuration;
 @property (nonatomic, readwrite) NSUInteger loopCount;
+@property (nonatomic, readwrite) CGImageSourceRef incrementalSource;
 
 @end
 
@@ -239,6 +240,100 @@ inline static BOOL isRetinaFilePath(NSString *path)
 
 - (void)dealloc {
     free(_frameDurations);
+    if (_incrementalSource) {
+        CFRelease(_incrementalSource);
+    }
+}
+
+@end
+
+@implementation OLImage (IncrementalData)
+
+//Snippet from AFNetworking
+static inline CGImageRef OLDecodedCGImageFromCGImage(CGImageRef imageRef)
+{
+    size_t width = CGImageGetWidth(imageRef);
+    size_t height = CGImageGetHeight(imageRef);
+    size_t bitsPerComponent = CGImageGetBitsPerComponent(imageRef);
+    size_t bytesPerRow = 0; // CGImageGetBytesPerRow() calculates incorrectly in iOS 5.0, so defer to CGBitmapContextCreate()
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGBitmapInfo bitmapInfo = CGImageGetBitmapInfo(imageRef);
+    
+    if (CGColorSpaceGetNumberOfComponents(colorSpace) == 3) {
+        int alpha = (bitmapInfo & kCGBitmapAlphaInfoMask);
+        if (alpha == kCGImageAlphaNone) {
+            bitmapInfo &= ~kCGBitmapAlphaInfoMask;
+            bitmapInfo |= kCGImageAlphaNoneSkipFirst;
+        } else if (!(alpha == kCGImageAlphaNoneSkipFirst || alpha == kCGImageAlphaNoneSkipLast)) {
+            bitmapInfo &= ~kCGBitmapAlphaInfoMask;
+            bitmapInfo |= kCGImageAlphaPremultipliedFirst;
+        }
+    }
+    
+    CGContextRef context = CGBitmapContextCreate(NULL, width, height, bitsPerComponent, bytesPerRow, colorSpace, bitmapInfo);
+    
+    CGColorSpaceRelease(colorSpace);
+    
+    CGRect rect = CGRectMake(0.0f, 0.0f, width, height);
+    CGContextDrawImage(context, rect, imageRef);
+    CGImageRef decodedImage = CGBitmapContextCreateImage(context);
+    CGContextRelease(context);
+    return decodedImage;
+}
+
++ (instancetype)imageWithIncrementalData:(NSData *)data
+{
+    OLImage *image = [[OLImage alloc] init];
+    image.totalDuration = 0;
+    image.incrementalSource = CGImageSourceCreateIncremental(NULL);
+    image.images = [NSMutableArray new];
+    if (data) {
+        [image updateWithData:data];
+    }
+    return image;
+}
+
+- (void)updateWithData:(NSData *)data
+{
+    [self updateWithData:data final:NO];
+}
+
+- (void)updateWithData:(NSData *)data final:(BOOL)final
+{
+    if (![self isPartial]) {
+        return;
+    }
+    NSInteger currentlyDecodedIndex = self.images ? ([self.images count] - 1) : -1;
+    CGImageSourceUpdateData(_incrementalSource, (__bridge CFDataRef)(data), final);
+    NSUInteger imageCount = CGImageSourceGetCount(_incrementalSource);
+    while ((imageCount > currentlyDecodedIndex + 2) || (final && imageCount > currentlyDecodedIndex+1)) {
+        currentlyDecodedIndex += 1;
+        
+        NSTimeInterval delay = CGImageSourceGetGifFrameDelay(_incrementalSource, currentlyDecodedIndex);        
+        NSTimeInterval *oldDelayArray = self.frameDurations;
+        NSTimeInterval *newDelayArray = (NSTimeInterval *)malloc((currentlyDecodedIndex + 1)*sizeof(NSTimeInterval));
+        memcpy(newDelayArray, oldDelayArray, currentlyDecodedIndex*sizeof(NSTimeInterval));
+        newDelayArray[currentlyDecodedIndex] = delay;
+        self.frameDurations = newDelayArray;
+        self.totalDuration += delay;
+        
+        CGImageRef image = CGImageSourceCreateImageAtIndex(_incrementalSource, currentlyDecodedIndex, NULL);
+        CGImageRef decodedImage = OLDecodedCGImageFromCGImage(image);
+        [self.images addObject:[UIImage imageWithCGImage:decodedImage]];
+        
+        free(oldDelayArray);
+        CGImageRelease(image);
+        CGImageRelease(decodedImage);
+    }
+    if (final) {
+        CFRelease(_incrementalSource);
+        _incrementalSource = nil;
+    }
+}
+
+- (BOOL)isPartial
+{
+    return _incrementalSource != nil;
 }
 
 @end
