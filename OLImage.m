@@ -165,9 +165,9 @@ inline static BOOL isRetinaFilePath(NSString *path)
     self.loopCount = [gifProperties[(NSString *)kCGImagePropertyGIFLoopCount] unsignedIntegerValue];
     self.images = [NSMutableArray arrayWithCapacity:numberOfFrames];
     
-    NSNull *aNull = [NSNull null];
+    UIImage *placeholderImage = [UIImage new];
     for (NSUInteger i = 0; i < numberOfFrames; ++i) {
-        [self.images addObject:aNull];
+        [self.images addObject:placeholderImage];
         NSTimeInterval frameDuration = CGImageSourceGetGifFrameDelay(imageSource, i);
         self.frameDurations[i] = frameDuration;
         self.totalDuration += frameDuration;
