@@ -173,6 +173,10 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
        dispatch_async(dispatch_get_main_queue(), ^{
            if (!self.window) {
                [self stopAnimating];
+               
+               [self.displayLink invalidate];
+               self.displayLink = nil;
+               self.animatedImage = nil;
            }
        });
     }
