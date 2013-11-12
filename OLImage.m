@@ -35,7 +35,7 @@ inline static NSTimeInterval CGImageSourceGetGifFrameDelay(CGImageSourceRef imag
     //See:  http://nullsleep.tumblr.com/post/16524517190/animated-gif-minimum-frame-delay-browser-compatibility
     //Also: http://blogs.msdn.com/b/ieinternals/archive/2010/06/08/animated-gifs-slow-down-to-under-20-frames-per-second.aspx
     
-    if (frameDuration < 0.02 - FLT_EPSILON) {
+    if (frameDuration < 0.02 - __FLT_EPSILON__) {
         frameDuration = 0.1;
     }
 #endif
