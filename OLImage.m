@@ -143,11 +143,15 @@ inline static BOOL isRetinaFilePath(NSString *path)
         }
     }
     
-    return ([[NSFileManager defaultManager] fileExistsAtPath:path]) ? [self imageWithContentsOfFile:path] : nil;
+    return [self imageWithContentsOfFile:path];
 }
 
 + (id)imageWithContentsOfFile:(NSString *)path
 {
+    if (![[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        return nil;
+    }
+    
     return [self imageWithData:[NSData dataWithContentsOfFile:path]
                          scale:retinaScaleForFilePath(path)];
 }
