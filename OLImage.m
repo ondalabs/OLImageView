@@ -59,6 +59,26 @@ inline static BOOL isRetinaFilePath(NSString *path)
     return retinaSuffixRange.length && retinaSuffixRange.location != NSNotFound;
 }
 
+inline static CGFloat scaleForFileAtPath(NSString *path)
+{
+    if (path.length < 3) {
+        return 0.0f;
+    }
+    
+    NSString *pathWithoutExtension = [path stringByDeletingPathExtension];
+    
+    NSRange retinaSuffixRange = NSMakeRange(pathWithoutExtension.length - 3, 3);
+    NSString *retinaSuffix = [pathWithoutExtension substringWithRange:retinaSuffixRange];
+    
+    if ([retinaSuffix isEqualToString:@"@3x"]) {
+        return 3.0f;
+    }
+    if ([retinaSuffix isEqualToString:@"@2x"]) {
+        return 2.0f;
+    }
+    return 1.0f;
+}
+
 @interface OLImageSourceArray : NSArray
 
 @property (nonatomic, readonly) CGImageSourceRef imageSource;
@@ -106,7 +126,7 @@ inline static BOOL isRetinaFilePath(NSString *path)
 + (id)imageWithContentsOfFile:(NSString *)path
 {
     return [self imageWithData:[NSData dataWithContentsOfFile:path]
-                         scale:isRetinaFilePath(path) ? 2.0f : 1.0f];
+                         scale:scaleForFileAtPath(path)];
 }
 
 + (id)imageWithData:(NSData *)data
@@ -141,7 +161,7 @@ inline static BOOL isRetinaFilePath(NSString *path)
 - (id)initWithContentsOfFile:(NSString *)path
 {
     return [self initWithData:[NSData dataWithContentsOfFile:path]
-                        scale:isRetinaFilePath(path) ? 2.0f : 1.0f];
+                        scale:scaleForFileAtPath(path)];
 }
 
 - (id)initWithData:(NSData *)data
