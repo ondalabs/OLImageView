@@ -53,31 +53,39 @@ inline static BOOL CGImageSourceContainsAnimatedGif(CGImageSourceRef imageSource
     return imageSource && UTTypeConformsTo(CGImageSourceGetType(imageSource), kUTTypeGIF) && CGImageSourceGetCount(imageSource) > 1;
 }
 
-inline static BOOL isRetinaFilePath(NSString *path)
+inline static NSString *retinaSuffixForFilePath(NSString *path)
 {
-    NSRange retinaSuffixRange = [[path lastPathComponent] rangeOfString:@"@2x" options:NSCaseInsensitiveSearch];
-    return retinaSuffixRange.length && retinaSuffixRange.location != NSNotFound;
+    NSUInteger suffixLength = 3;
+    
+    if (path.length < suffixLength) {
+        return nil;
+    }
+    
+    NSString *strippedPath = [path stringByDeletingPathExtension];
+    
+    NSRange suffixRange = NSMakeRange(strippedPath.length - suffixLength, suffixLength);
+    return [strippedPath substringWithRange:suffixRange];
 }
 
-inline static CGFloat scaleForFileAtPath(NSString *path)
+inline static CGFloat retinaScaleForFilePath(NSString *path)
 {
-    if (path.length < 3) {
-        return 0.0f;
-    }
+    NSString *suffix = retinaSuffixForFilePath(path);
     
-    NSString *pathWithoutExtension = [path stringByDeletingPathExtension];
-    
-    NSRange retinaSuffixRange = NSMakeRange(pathWithoutExtension.length - 3, 3);
-    NSString *retinaSuffix = [pathWithoutExtension substringWithRange:retinaSuffixRange];
-    
-    if ([retinaSuffix isEqualToString:@"@3x"]) {
+    if ([suffix isEqualToString:@"@3x"]) {
         return 3.0f;
     }
-    if ([retinaSuffix isEqualToString:@"@2x"]) {
+    if ([suffix isEqualToString:@"@2x"]) {
         return 2.0f;
     }
     return 1.0f;
 }
+
+inline static BOOL isRetinaFilePath(NSString *path)
+{
+    CGFloat scale = retinaScaleForFilePath(path);
+    return scale > 1.0;
+}
+
 
 @interface OLImageSourceArray : NSArray
 
@@ -110,6 +118,7 @@ inline static CGFloat scaleForFileAtPath(NSString *path)
 {
     NSString *path = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:name];
     
+    // If there isn't any path extension, we try to append the appropriate one, giving priority to *.gif
     if ([path pathExtension].length == 0) {
         
         if ([[NSFileManager defaultManager] fileExistsAtPath:[path stringByAppendingPathExtension:@"gif"]]) {
@@ -120,13 +129,27 @@ inline static CGFloat scaleForFileAtPath(NSString *path)
         }
     }
     
+    // If no retina suffix present, we try to append the appropriate one
+    if (!isRetinaFilePath(path)) {
+        NSString *suffix = [NSString stringWithFormat:@"@%gx", [UIScreen mainScreen].nativeScale];
+        
+        NSMutableString *retinaPath = [path mutableCopy];
+        
+        NSUInteger idx = path.length-([path pathExtension].length+1);
+        [retinaPath insertString:suffix atIndex:idx];
+        
+        if ([[NSFileManager defaultManager] fileExistsAtPath:retinaPath]) {
+            path = retinaPath;
+        }
+    }
+    
     return ([[NSFileManager defaultManager] fileExistsAtPath:path]) ? [self imageWithContentsOfFile:path] : nil;
 }
 
 + (id)imageWithContentsOfFile:(NSString *)path
 {
     return [self imageWithData:[NSData dataWithContentsOfFile:path]
-                         scale:scaleForFileAtPath(path)];
+                         scale:retinaScaleForFilePath(path)];
 }
 
 + (id)imageWithData:(NSData *)data
@@ -161,7 +184,7 @@ inline static CGFloat scaleForFileAtPath(NSString *path)
 - (id)initWithContentsOfFile:(NSString *)path
 {
     return [self initWithData:[NSData dataWithContentsOfFile:path]
-                        scale:scaleForFileAtPath(path)];
+                        scale:retinaScaleForFilePath(path)];
 }
 
 - (id)initWithData:(NSData *)data
