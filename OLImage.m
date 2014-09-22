@@ -90,6 +90,16 @@ inline static BOOL isRetinaFilePath(NSString *path)
 {
     NSString *path = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:name];
     
+    if ([path pathExtension].length == 0) {
+        
+        if ([[NSFileManager defaultManager] fileExistsAtPath:[path stringByAppendingPathExtension:@"gif"]]) {
+            path = [path stringByAppendingPathExtension:@"gif"];
+        }
+        else if ([[NSFileManager defaultManager] fileExistsAtPath:[path stringByAppendingPathExtension:@"png"]]) {
+            path = [path stringByAppendingPathExtension:@"png"];
+        }
+    }
+    
     return ([[NSFileManager defaultManager] fileExistsAtPath:path]) ? [self imageWithContentsOfFile:path] : nil;
 }
 
