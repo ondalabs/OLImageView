@@ -131,7 +131,14 @@ inline static BOOL isRetinaFilePath(NSString *path)
     
     // If no retina suffix present, we try to append the appropriate one
     if (!isRetinaFilePath(path)) {
-        NSString *suffix = [NSString stringWithFormat:@"@%gx", [UIScreen mainScreen].nativeScale];
+        
+        CGFloat scale = [UIScreen mainScreen].scale;
+        
+        if ([[UIScreen mainScreen] respondsToSelector:@selector(nativeScale)]) {
+            scale = [UIScreen mainScreen].nativeScale; //This property returns @3x
+        }
+        
+        NSString *suffix = [NSString stringWithFormat:@"@%gx", scale];
         
         NSMutableString *retinaPath = [path mutableCopy];
         
