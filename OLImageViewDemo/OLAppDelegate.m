@@ -50,6 +50,8 @@
     [magicAnimatedVC.view addSubview:Aimv];
     
     Aimv = [[OLImageView alloc] initWithImage:[OLImage imageNamed:@"google-io"]];
+    Aimv.contentMode = UIViewContentModeCenter;
+    Aimv.clipsToBounds = YES;
     [Aimv setFrame:CGRectMake(0, 160, 160, 160)];
     [Aimv setUserInteractionEnabled:YES];
     [Aimv addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)]];

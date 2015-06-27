@@ -177,7 +177,10 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     if (!self.animatedImage || [self.animatedImage.images count] == 0) {
         return;
     }
-    layer.contents = (__bridge id)([[self.animatedImage.images objectAtIndex:self.currentFrameIndex] CGImage]);
+    UIImage *uiImage = [self.animatedImage.images objectAtIndex:self.currentFrameIndex];
+    CGImageRef image = [uiImage CGImage];
+    layer.contents = (__bridge id)(image);
+    layer.contentsScale = uiImage.scale;
 }
 
 - (void)didMoveToWindow
