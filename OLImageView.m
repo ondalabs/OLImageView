@@ -22,6 +22,7 @@
 @property (nonatomic) NSTimeInterval accumulator;
 @property (nonatomic) NSUInteger currentFrameIndex;
 @property (nonatomic) NSUInteger loopCountdown;
+@property (nonatomic, strong) UIColor *myBackgroundColor;
 
 @end
 
@@ -181,6 +182,13 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     CGImageRef image = [uiImage CGImage];
     layer.contents = (__bridge id)(image);
     layer.contentsScale = uiImage.scale;
+    layer.backgroundColor = self.myBackgroundColor.CGColor;
+}
+
+- (void)setBackgroundColor:(UIColor *)backgroundColor
+{
+    [super setBackgroundColor:backgroundColor];
+    self.myBackgroundColor = backgroundColor;
 }
 
 - (void)didMoveToWindow
