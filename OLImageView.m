@@ -114,7 +114,43 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     _animatedImage = animatedImage;
     if (animatedImage == nil) {
         self.layer.contents = nil;
+        self.layer.contentsScale = 1;
+    } else {
+        self.layer.contentsScale = animatedImage.scale;
     }
+}
+
+#define OLCaseContentMode(aCase) \
+case UIViewContentMode##aCase: \
+contentsGravity = kCAGravity##aCase; \
+break
+
+- (void)setContentMode:(UIViewContentMode)contentMode
+{
+    NSString *contentsGravity;
+    switch (contentMode) {
+            OLCaseContentMode(Bottom);
+            OLCaseContentMode(BottomLeft);
+            OLCaseContentMode(BottomRight);
+            OLCaseContentMode(Top);
+            OLCaseContentMode(TopLeft);
+            OLCaseContentMode(TopRight);
+            OLCaseContentMode(Center);
+            OLCaseContentMode(Right);
+            OLCaseContentMode(Left);
+        case UIViewContentModeScaleAspectFill:
+            contentsGravity = kCAGravityResizeAspectFill;
+            break;
+        case UIViewContentModeScaleAspectFit:
+            contentsGravity = kCAGravityResizeAspect;
+            break;
+        case UIViewContentModeScaleToFill:
+        case UIViewContentModeRedraw:
+            contentsGravity = kCAGravityResize;
+            break;
+    }
+    self.layer.contentsGravity = contentsGravity;
+    [super setContentMode:contentMode];
 }
 
 - (BOOL)isAnimating
