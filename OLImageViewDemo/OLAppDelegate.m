@@ -50,6 +50,9 @@
     [magicAnimatedVC.view addSubview:Aimv];
     
     Aimv = [[OLImageView alloc] initWithImage:[OLImage imageNamed:@"google-io"]];
+    Aimv.contentMode = UIViewContentModeCenter;
+    Aimv.clipsToBounds = YES;
+    Aimv.backgroundColor = [UIColor cyanColor];
     [Aimv setFrame:CGRectMake(0, 160, 160, 160)];
     [Aimv setUserInteractionEnabled:YES];
     [Aimv addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)]];
@@ -115,6 +118,8 @@
         NSLog(@"STOP");
         [imageView stopAnimating];
     } else {
+        CGFloat randomHue = (CGFloat)arc4random_uniform(255) / 255;
+        imageView.backgroundColor = [UIColor colorWithHue:randomHue saturation:1 brightness:1 alpha:1];
         self.running = YES;
         NSLog(@"START");
         [imageView startAnimating];

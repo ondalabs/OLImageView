@@ -180,6 +180,12 @@ const NSTimeInterval kMaxTimeStep = 1; // note: To avoid spiral-o-death
     layer.contents = (__bridge id)([[self.animatedImage.images objectAtIndex:self.currentFrameIndex] CGImage]);
 }
 
+- (void)setBackgroundColor:(UIColor *)backgroundColor
+{
+    [super setBackgroundColor:backgroundColor];
+    self.layer.backgroundColor = [backgroundColor CGColor];
+}
+
 - (void)didMoveToWindow
 {
     [super didMoveToWindow];
