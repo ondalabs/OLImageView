@@ -216,6 +216,12 @@ break
     layer.contents = (__bridge id)([[self.animatedImage.images objectAtIndex:self.currentFrameIndex] CGImage]);
 }
 
+- (void)setBackgroundColor:(UIColor *)backgroundColor
+{
+    [super setBackgroundColor:backgroundColor];
+    self.layer.backgroundColor = [backgroundColor CGColor];
+}
+
 - (void)didMoveToWindow
 {
     [super didMoveToWindow];
